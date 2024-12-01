@@ -1,5 +1,7 @@
-import os
 import modal
+import aiohttp
+
+from app.common.endpoints import AUDIOGRAM_SAVE
 
 from dotenv import load_dotenv
 from app.server import app as webapp
@@ -33,7 +35,7 @@ def api():
     max_inputs=1,
     retries=0,
 )
-def launch_yolo_model(image: bytes):
+async def launch_yolo_model(image: bytes, token: str):
     import io
     import numpy as np
 
@@ -52,5 +54,24 @@ def launch_yolo_model(image: bytes):
     input_image = np.array(input_image)
 
     air_right_ear_audiogram, air_left_ear_audiogram = reader.feature_extraction(input_image)
+
+    payload = {
+        "right_ear": air_right_ear_audiogram.to_dict(),
+        "left_ear": air_left_ear_audiogram.to_dict(),
+    }
+
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.post(url=AUDIOGRAM_SAVE, json=payload, headers=headers) as response:
+                if response.status != 200:
+                    logger.debug(f"Failed to send data. Status code: {response.status}")
+                logger.debug("Data sent successfully:", await response.json())
+        except aiohttp.ClientError as e:
+            print(f"Request failed: {e}")
 
     return air_right_ear_audiogram, air_left_ear_audiogram

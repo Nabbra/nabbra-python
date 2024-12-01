@@ -18,10 +18,7 @@ async def amplify_endpoint(websocket: WebSocket):
     sample_rate = int(websocket.query_params.get("sample_rate", "8000"))
 
     amplifier.set_sample_rate(sample_rate)
-    amplifier.set_ranges({
-        (250, 500): 10,
-        (700, 1000): 6
-    })
+
     amplifier.to_linear_gain()
 
     logger.debug(f"Openning a websocket connection to amplify audio at sample rate {sample_rate}")
@@ -30,11 +27,15 @@ async def amplify_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
 
+            ear = data.get("ear")
             audio_buffer = base64.b64decode(data.get("audio"))
+
+            ranges = await manager.get_amplification_ranges(ear)
+            amplifier.set_ranges(ranges)
 
             audio = amplifier.apply_gain_from_bytes(audio_buffer).tobytes()
             audio_base64 = base64.b64encode(audio).decode('utf-8')
 
-            await websocket.send_json({"ear": data.get("ear"), "audio": audio_base64})
+            await websocket.send_json({"ear": ear, "audio": audio_base64})
     except WebSocketDisconnect:
         manager.disconnect(websocket)

@@ -1,5 +1,4 @@
 import os
-import modal
 import numpy as np
 
 from fastapi import APIRouter, Request, HTTPException, status
@@ -15,6 +14,10 @@ router = APIRouter(prefix="/audiogram")
 async def read(request: Request):
     form = await request.form()
     audiogram_image = await form["audiogram"].read()
+    token = request.query_params.get("token")
+
+    if not token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     if os.getenv("MODAL_ENV"):
         logger.debug("Spawning AI model on Modal")
@@ -28,9 +31,10 @@ async def read(request: Request):
                 detail="Failed to import launch_yolo_modal from modal_app"
             )
 
-        call = modal_app.launch_yolo_model.spawn(audiogram_image)
+        call = modal_app.launch_yolo_model.spawn(audiogram_image, request.query_params.get("token"))
 
         return JSONResponse({
+            "success": True,
             "call_id": call.object_id,
         })
 
@@ -48,18 +52,4 @@ async def read(request: Request):
         "status": True,
         "right_ear": right_ear_result.to_dict(),
         "left_ear": left_ear_result.to_dict()
-    })
-
-@router.get("/reader/result/{call_id}", response_class=JSONResponse)
-async def audiogram_results(call_id: str):
-    function_call = modal.functions.FunctionCall.from_id(call_id)
-    try:
-        right_ear_result, left_ear_result = function_call.get(timeout=0)
-    except TimeoutError:
-        return JSONResponse(content="", status_code=202)
-
-    return JSONResponse({
-        "success": True,
-        "right_ear": right_ear_result.to_dict(),
-        "left_ear": left_ear_result.to_dict(),
     })
