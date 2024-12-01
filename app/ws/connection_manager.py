@@ -1,4 +1,6 @@
-import os
+import aiohttp
+
+from app.common.endpoints import Endpoints
 
 from typing import Dict
 from collections import defaultdict
@@ -37,7 +39,18 @@ class ConnectionManager:
         self._remove_connection(self._get_token(websocket))
 
     async def _is_valid_token(self, token: str | None) -> bool:
-        return token is not None
+        if token is None:
+            return False
+
+        async with aiohttp.ClientSession() as session:
+            headers = {"Authorization": f"Bearer {token}"}
+            try:
+                async with session.post(url=Endpoints.TOKEN_VALIDATOR, headers=headers) as response:
+                    if response.status_code == 200:
+                        return True
+            except:
+                return False
+        return False
 
     def _get_existing_connections(self, token: str) -> Dict[str, WebSocket]:
         return self._connections[token]

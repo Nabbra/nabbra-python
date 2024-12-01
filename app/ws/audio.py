@@ -1,7 +1,6 @@
 import base64
 
 from fastapi import WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
 
 from app.common.factory import ServiceFactory
 

@@ -8,13 +8,15 @@ import numpy as np
 SAMPLE_SIZE = 16000
 BLOCK_SIZE = 2048
 CHANNELS = 1
-SERVER_URI = "wss://abdallamohammed--nabbra-ai-api-dev.modal.run/stream/audio/amplify?token=dd"
+
+AUTH_TOKEN = "dd"
+WS_SERVER_URI = f"wss://abdallamohammed--nabbra-ai-api-dev.modal.run/stream/audio/amplify?token={AUTH_TOKEN}"
 
 
 async def stream_audio():
     loop = asyncio.get_running_loop()
 
-    async with websockets.connect(SERVER_URI) as websocket:
+    async with websockets.connect(WS_SERVER_URI) as websocket:
         def callback(indata, outdata, frames, time, status):
             if status:
                 print(f"Status: {status}")
